@@ -460,7 +460,64 @@ We have successfully recreate the powersimulation of existing data from scratch 
 advantage, that we now can iterate over different numbers of subjects and items.
 
 
+### Loop over Sample Sizes
+# Run simulations over a range of values for any parameter.
+```@example Main
+# varying
+sub_ns = [20, 30, 40]
+item_ns = [10, 20, 30]
 
+# fixed
+nsims = 1000
+
+new_beta = [2181.85, 67.879, -333.791, 78.5904]
+new_sigma = 680.032
+new_theta = [0.5363168233715857,
+            -0.25981993107379,
+            0.2653016002105174,
+            0.4382528181348316]
+new_theta = kb07_m.θ
+
+mydf = fake_kb07_df
+rng = StableRNG(42);
+
+d = DataFrame()
+
+# set contrasts
+contrasts = Dict(:spkr => HelmertCoding(),
+                :prec => HelmertCoding(),
+                :load => HelmertCoding());
+
+# define formula, same as above
+model_f = @formula( rt_trunc ~ 1 + spkr+prec+load + (1|subj) + (1+prec|item) );
+
+# fit model
+model = fit(MixedModel, model_f, fake_kb07_df, contrasts=contrasts);
+
+
+for sub_n in sub_ns
+    for item_n in item_ns
+        model_sim = parametricbootstrap(rng, nsims, model,
+                                β = new_beta,
+                                σ = new_sigma,
+                                θ = new_theta,
+                                use_threads = false);
+
+
+        #power_table(model_sim)
+
+        pt = power_table(model_sim)
+        ptdf = DataFrame(pt)
+        ptdf[!, :item_n] .= item_n
+        ptdf[!, :sub_n] .= sub_n
+        append!(d, ptdf)
+    end
+end
+
+CSV.write("power.csv", d)
+
+d
+```
 
 
 
