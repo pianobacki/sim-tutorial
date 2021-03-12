@@ -8,7 +8,7 @@ Updated by Lisa Schwetlick & Daniel Backhaus
 Load the packages we'll be using in Julia
 
 ```@example Main
-using MixedModels        # run mixed models DANIEL
+using MixedModels        # run mixed models
 using MixedModelsSim     # simulation functions for mixed models
 using RCall              # call R functions from inside Julia
 using DataFrames, Tables # work with data tables
@@ -340,10 +340,12 @@ both_win = Dict("spkr" => ["old", "new"],
 ```
 
 ### Simulate data
+```@example Main
 fake_kb07 = simdat_crossed(subj_n, item_n, 
                      subj_btwn = subj_btwn, 
                      item_btwn = item_btwn, 
                      both_win = both_win);
+```
 
 Make da dataframe
 ```@example Main
