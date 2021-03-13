@@ -8,7 +8,7 @@ Power analysis is an important tool for experimental design. Here we show how to
 2. Adapt parameters in the analysis without changing the existing data set
 3. Create a bootstrapped dataset given only a model (data from scratch)
 4. Adapt parameters and analyze sample size
-
+@DANIEL: willst du noch was zur einleitung sagen?
 
 ### Load the packages we'll be using in Julia
 First, here are the packages needed in this example.
@@ -34,9 +34,9 @@ nsims = 1000
 <br/><br/>
 
 # 1. Simulate from existing data
-
+@DANIEL: in welcher situation ist das zB nüzlich
 TODO: If the data (of a previous study is available, you can use it to generate??....) In the first step we specify our model.
-TODO: briefly describe the dataset
+@DANIEL:: briefly describe the dataset
 
 Load existing data:
 ```@example Main
@@ -114,7 +114,7 @@ kb07_sim_df[kb07_sim_df.coefname .== Symbol("prec: maintain"),:]
 mean(kb07_sim_df[kb07_sim_df.coefname .== Symbol("prec: maintain"),:p] .< 0.05)
 ````
 
-For nicely displaying, you can use pretty_table:
+For nicely displaying, you can use `pretty_table`:
 ```@example Main
 pretty_table(ptbl)
 ```
@@ -211,6 +211,7 @@ See the two inner values:
 kb07_m.θ
 ```
 
+TODO:
 # NEED HELP HERE, IS THEIR ANY WAY TO DEFINE VARIANCE-COVARIANCE MATRIX YET ?
 <!---
 vc = VarCorr(kb07_m)
@@ -345,15 +346,14 @@ pretty_table(ptbl)
 
 # 2.2 Recreate the `kb07`-dataset from scratch
 
-To also play with the number of subjects and items in our power calculation, we need to recreate the 
-design of an given experiment. Lets start with a simulated replication of the `kb07`-dataset.
+To also play with the number of subjects and items in our power calculation, we need to recreate the design of an given experiment. Lets start with a simulated replication of the `kb07`-dataset.
 
 
 Define subject and item number:
 ```@example Main
 subj_n = 56
 item_n = 32
-``` 
+```
 
 Define factors in a dict:
 ```@example Main
@@ -366,9 +366,9 @@ both_win = Dict("spkr" => ["old", "new"],
 
 Simulate data:
 ```@example Main
-fake_kb07 = simdat_crossed(subj_n, item_n, 
-                     subj_btwn = subj_btwn, 
-                     item_btwn = item_btwn, 
+fake_kb07 = simdat_crossed(subj_n, item_n,
+                     subj_btwn = subj_btwn,
+                     item_btwn = item_btwn,
                      both_win = both_win);
 ```
 
@@ -382,34 +382,14 @@ Have a look:
 first(fake_kb07_df,8)
 ```
 
-# NEED HELP - IS THERE AN EASIER WAY ?
+The function `simdat_crossed` generates a fully crossed design. 
+Unfortunately, our original design is not fully crossed. Every subject saw an image only once, thus in one of eight possible conditions. To simulate that we only keep one of every eight lines.
+# TODO: NEED HELP, is that correct? or is it possible to do it in simdat_crossed?
 
-Change sorting for later selection:
-
-```@example Main
-fake_kb07_df = unstack(fake_kb07_df, :item, :dv);   # makes wide format  
-fake_kb07_df = stack(fake_kb07_df, 5:ncol(fake_kb07_df), variable_name = :item);  # makes long format
-rename!(fake_kb07_df, :value => :dv)
-
-fake_kb07_df = unstack(fake_kb07_df, :subj, :dv)
-fake_kb07_df = stack(fake_kb07_df, 5:ncol(fake_kb07_df), variable_name = :subj);
+We sort the dataframe to enable easier selection
 ```
-
-Rename the `dv` to its original name in the `kb07`-dataset:
-
-```@example Main
-rename!(fake_kb07_df, :value => :rt_trunc)
-``` 
-
-Write a CSV:
-
-```@example Main
-CSV.write("fake_kb07_df.csv", fake_kb07_df);
+fake_kb07_df = sort(fake_kb07_df, [:subj, :item, :load, :prec, :spkr])
 ```
-
-# NEED HELP, is that correct? or is it possible to do it in simdat_crossed?
-
-Our original design is not fully crossed. Every subject saw an image only once, thus in one of eight possible conditions. To simulate that we only keep one of every eight lines.
 
 Define an index which represets a random choise of one of every eight rows:
 ```@example Main
@@ -425,6 +405,15 @@ Reduce the fully crossed design to the original experimental design:
 ```@example Main
 fake_kb07_df= fake_kb07_df[idx, :]
 ```
+
+Write a CSV:
+
+```@example Main
+CSV.write("fake_kb07_df.csv", fake_kb07_df);
+```
+
+
+Now we can use the simulated data in the same way as above.
 
 Set contrasts:
 ```@example Main
@@ -553,25 +542,18 @@ d = DataFrame();
 
 ### Run the loop:
 ```@example Main
-for sub_n in sub_ns
+for subj_n in sub_ns
     for item_n in item_ns
 
     # Make fully crossed data:
-    fake_kb07 = simdat_crossed(subj_n, item_n, 
-                     subj_btwn = subj_btwn, 
-                     item_btwn = item_btwn, 
+    fake_kb07 = simdat_crossed(subj_n, item_n,
+                     subj_btwn = subj_btwn,
+                     item_btwn = item_btwn,
                      both_win = both_win);
 
 
     # Reduce the fully crossed design to the original experimental design:
-    fake_kb07_df = DataFrame(fake_kb07);
-    fake_kb07_df = unstack(fake_kb07_df, :item, :dv);
-    fake_kb07_df = stack(fake_kb07_df, 5:ncol(fake_kb07_df), variable_name = :item);
-
-    rename!(fake_kb07_df, :value => :dv);
-    fake_kb07_df = unstack(fake_kb07_df, :subj, :dv)
-    fake_kb07_df = stack(fake_kb07_df, 5:ncol(fake_kb07_df), variable_name = :subj)
-    rename!(fake_kb07_df, :value => :rt_trunc)
+    fake_kb07_df = sort(fake_kb07_df, [:subj, :item, :load, :prec, :spkr])
 
     Z= convert(Int64,(length(fake_kb07)/8))
     idx = rand(rng, 1:8 , Z)
@@ -581,18 +563,16 @@ for sub_n in sub_ns
     idx = idx+A
 
     fake_kb07_df= fake_kb07_df[idx, :]
-    
 
     # Fit the model:
     fake_kb07_m = fit(MixedModel, kb07_f, fake_kb07_df, contrasts=contrasts);
 
     # Run nsims iterations:
-    fake_kb07_sim = parametricbootstrap(rng, nsims, fake_kb07_m, 
-                        β = new_beta, 
-                        σ = new_sigma, 
+    fake_kb07_sim = parametricbootstrap(rng, nsims, fake_kb07_m,
+                        β = new_beta,
+                        σ = new_sigma,
                         θ = new_theta,
                         use_threads = false);
-    
 
     # Power calculation
     ptbl = power_table(fake_kb07_sim)
@@ -612,12 +592,12 @@ Save the powertable as CSV
 CSV.write("power.csv", d)
 ```
 
+# TODO: NEED Help: it would be nice to make a plot of this!
+
 # Credit
-This tutorial was conceived for ZIF research and tutorial workshop and again in the 2020 SMLP Summer School by Lisa DeBruine.
+This tutorial was conceived for ZIF research and tutorial workshop  by Lisa DeBruine presented again by Phillip Alday during the 2020 SMLP Summer School.
 
 Updated by Lisa Schwetlick & Daniel Backhaus after changes to the package.
-
-
 
 
 
