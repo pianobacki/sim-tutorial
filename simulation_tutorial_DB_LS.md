@@ -1,12 +1,18 @@
-Simulation Tutorial
-===================
+Power Analysis and Simulation Tutorial
+======================================
 
-Based on Lisa DeBruine's work.
+This tutorial demonstrates how to conduct power analyses and data simulation using Julia and the MixedModelsSim package.
 
-Updated by Lisa Schwetlick & Daniel Backhaus
+Power analysis is an important tool for experimental design. Here we show how to
+1. Create a bootstrapped dataset from existing data with a given model
+2. Adapt parameters in the analysis without changing the existing data set
+3. Create a bootstrapped dataset given only a model (data from scratch)
+4. Adapt parameters and analyze sample size
 
 
 ### Load the packages we'll be using in Julia
+First, here are the packages needed in this example.
+
 ```@example Main
 using MixedModels        # run mixed models
 using MixedModelsSim     # simulation functions for mixed models
@@ -20,13 +26,17 @@ using LinearAlgebra      # not used yet, for specifing θ
 ```
 
 ### Define number of iterations
+Here we define how many model simulations we want to do. A large number will give more reliable results, but will take longer to compute. It is useful to set it to a low number for testing, and increase it for your final analysis.
 
-Set to a low number for test, high for production
 ```@example Main
 nsims = 1000 
 ```
 <br/><br/>
-# Simulate from existing data
+
+# 1. Simulate from existing data
+
+TODO: If the data (of a previous study is available, you can use it to generate??....) In the first step we specify our model.
+TODO: briefly describe the dataset
 
 Load existing data:
 ```@example Main
@@ -40,7 +50,7 @@ contrasts = Dict(:spkr => HelmertCoding(),
                  :load => HelmertCoding());
 ```
 
-Define formula:
+Define model formula:
 ```@example Main
 kb07_f = @formula( rt_trunc ~ 1 + spkr+prec+load + (1|subj) + (1+prec|item) );
 ```
@@ -51,13 +61,15 @@ kb07_m = fit(MixedModel, kb07_f, kb07, contrasts=contrasts);
 print(kb07_m)
 ```
 
-## **Simulate from existing data with same parameters**
- 
-Use the `parameparametricbootstrap()` function to run `nsims` iterations of data sampled using the parameters from `kb07_m`. 
+## **1.1 Simulate from existing data with same parameters**
+
+TODO: First we look at the power of the dataset with the same parameters as in the original data...
+
+You can use the `parameparametricbootstrap()` function to run `nsims` iterations of data sampled using the parameters from `kb07_m`.
 Set up a random seed to make the simulation reproducible. You can use your favourite number.
 
-To use multithreading, you need to set the number of cores you want to use. 
-E.g. in Visual Studio Code, open the settings (gear icon in the lower left corner or cmd-,) and search for "thread". 
+To use multithreading, you need to set the number of cores you want to use.
+E.g. in Visual Studio Code, open the settings (gear icon in the lower left corner or cmd-,) and search for "thread".
 Set `julia.NumThreads` to the number of cores you want to use (at least 1 less than your total number).
 
 
@@ -79,14 +91,16 @@ kb07_sim_df = DataFrame(kb07_sim.coefpvalues);
 CSV.write("kb07_sim.csv", kb07_sim_df);
 ```
 
-Have a look:
+Have a look at your simluated data:
 ```@example Main
 print(first(kb07_sim_df, 8))
 ```
 
+Now that we have a bootstrapped dataset, we can start our power calculation.
+
 ### Power calculation
 
-The function `power_table()` from `MixedModelsSim` takes the output of `parametricbootstrap()` and calculates the proportion of simulations where the p-value is less than alpha for each coefficient. 
+The function `power_table()` from `MixedModelsSim` takes the output of `parametricbootstrap()` and calculates the proportion of simulations where the p-value is less than alpha for each coefficient.
 You can set the `alpha` argument to change the default value of 0.05 (justify your alpha ;).
 
 ```@example Main
@@ -106,11 +120,10 @@ pretty_table(ptbl)
 ```
 
 
-## **Simulate data with changed parameters without touching the existing data**
+## **1.2 Simulate data with changed parameters without touching the existing data**
 
-
-Let's say we want to check our power to detect effects of spkr, prec, and load 
-that are half the size of our pilot data. We can set a new vector of beta values 
+Let's say we want to check our power to detect effects of spkr, prec, and load
+that are half the size of our pilot data. We can set a new vector of beta values
 with the `β` argument to `parametricbootstrap()`.
 
 
@@ -139,7 +152,9 @@ power_table(kb07_sim_half)
 <br/><br/>
 
 
-# Simulate data from scratch
+# 2. Simulate data from scratch
+
+TODO: in some situations it may be useful to simulate the data from scratch. That means that we specify the effect sizes manually... This is useful when (you have the information but didnt fit the data yourself??)
 
 If we simulate data from scratch, next to subject and item number, we can manipulate the arguments `β`, `σ` and `θ`.
 Lets have a closer look at them, define their meaning and we will see where the corresponding values in the model output are.
@@ -161,8 +176,7 @@ kb07_m.σ
 ```
 
 ### **Theta**
-`θ` is a more complex parameter. In a less complex model, with only intercepts for the random effects, 
-or if we supress the correlations in the formula with `zerocorr()` then `θ` describes the relationship between 
+The meaning of `θ` is a bit less intuitive. In a less complex model (one that only  has intercepts for the random effects) or if we supress the correlations in the formula with `zerocorr()` then `θ` describes the relationship between 
 the random effects standard deviation and the standard deviation of the residual term.
 In our `kb07_m` example:
 The residual standard deviation is `680.032`.
@@ -177,7 +191,7 @@ kb07_m.θ
 We also can calculate the `θ` for variance component *`subj - (Intercept)`*. 
 The residual standard deviation is `680.032`.
 The standard deviation of our variance component *`subj - (Intercept)`* is `298.026`.
-Thus the retated θ is the relationship: variance component devided by residual standard deviation
+Thus, the related θ is the relationship: variance component devided by residual standard deviation
 298.026 /  680.032 =  `0.438252`
 
 ```@example Main
@@ -223,7 +237,7 @@ re_subj = create_re(0.4382528181348316)
 vcat( flatlowertri(re_item), flatlowertri(re_subj) )
 --->
 
-Having this knowledge about the parameter we can now **simulate data from scratch**
+Having this knowledge about the parameters we can now **simulate data from scratch**
 
 The `simdat_crossed()` function from `MixedModelsSim` lets you set up a data frame with a specified experimental design. 
 For now, it only makes fully balanced crossed designs!, but you can generate an unbalanced design by simulating data for the largest cell and deleting extra rows. 
@@ -231,20 +245,23 @@ For now, it only makes fully balanced crossed designs!, but you can generate an 
 Firstly we will set an easy design where `subj_n` subjects per `age` group (O or Y) respond to `item_n` items in each of two `condition`s (A or B).
 
 Your factors need to be specified separately for between-subject, between-item, and within-subject/item factors using `Dict` with the name of each factor as the keys and vectors with the names of the levels as values.
-<br/><br/>
-Define factors in a dict.
-Put between subject factors in a dict:
+
+## 2.1 A simple example
+
+First we have to define factors in a dict.
+
+We start with the between subject factors:
 ```@example Main
 subj_btwn = Dict("age" => ["O", "Y"])
 ```
 
-There are no between-item factors in this design so you can omit it or set it to nothing. 
-Note if you have factors which are between subject and between item, put them in both dicts.
+There are no between-item factors in this design so you can omit it or set it to nothing.
+Note that if you have factors which are between subject and between item, you need to put them in both dicts.
 ```@example Main
 item_btwn = nothing
 ```
 
-Put within-subject/item factors in a dict:
+Next, we put within-subject/item factors in a dict:
 ```@example Main
 both_win = Dict("condition" => ["A", "B"])
 ```
@@ -325,7 +342,8 @@ pretty_table(ptbl)
 ```
 
 <br/><br/>
-# Recreate the `kb07`-dataset from scratch
+
+# 2.2 Recreate the `kb07`-dataset from scratch
 
 To also play with the number of subjects and items in our power calculation, we need to recreate the 
 design of an given experiment. Lets start with a simulated replication of the `kb07`-dataset.
@@ -367,6 +385,7 @@ first(fake_kb07_df,8)
 # NEED HELP - IS THERE AN EASIER WAY ?
 
 Change sorting for later selection:
+
 ```@example Main
 fake_kb07_df = unstack(fake_kb07_df, :item, :dv);   # makes wide format  
 fake_kb07_df = stack(fake_kb07_df, 5:ncol(fake_kb07_df), variable_name = :item);  # makes long format
@@ -377,11 +396,13 @@ fake_kb07_df = stack(fake_kb07_df, 5:ncol(fake_kb07_df), variable_name = :subj);
 ```
 
 Rename the `dv` to its original name in the `kb07`-dataset:
+
 ```@example Main
 rename!(fake_kb07_df, :value => :rt_trunc)
 ``` 
 
 Write a CSV:
+
 ```@example Main
 CSV.write("fake_kb07_df.csv", fake_kb07_df);
 ```
@@ -471,9 +492,9 @@ advantage, that we now can iterate over different number of subjects and items.
 <br/> <br/>
 
 # Loop over sample sizes
+When designing a study, you may be interested in trying various numbers ob subjects and items to see how that affects the power of your study. To do this you can use a loop to run simulations over a range of values for any parameter.
 
-Run simulations over a range of values for any parameter.
-Therefore we first define every fixed things outside the loop.
+### We first define every fixed things outside the loop.
 
 Define factors in a dict:
 ```@example Main
@@ -518,7 +539,7 @@ new_theta = kb07_m.θ
 ```
 
 
-
+### Then we define the variables that out loop will iterate over
 Define subject and item numbers as arrays:
 ```@example Main
 sub_ns = [20, 30, 40];
@@ -530,7 +551,7 @@ Make an emty dataframe:
 d = DataFrame();
 ```
 
-Run the loop:
+### Run the loop:
 ```@example Main
 for sub_n in sub_ns
     for item_n in item_ns
@@ -584,12 +605,17 @@ for sub_n in sub_ns
 end
 ```
 
+Our dataframe `d` now contains the power information for each combination of subjects and items.
+
 Save the powertable as CSV
 ```@example Main
 CSV.write("power.csv", d)
 ```
 
+# Credit
+This tutorial was conceived for ZIF research and tutorial workshop and again in the 2020 SMLP Summer School by Lisa DeBruine.
 
+Updated by Lisa Schwetlick & Daniel Backhaus after changes to the package.
 
 
 
