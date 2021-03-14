@@ -417,6 +417,7 @@ idx = idx+A
 Reduce the fully crossed design to the original experimental design:
 ```@example Main
 fake_kb07_df= fake_kb07_df[idx, :]
+rename!(fake_kb07_df, :dv => :rt_trunc)
 ```
 
 Write a CSV:
@@ -560,7 +561,7 @@ for subj_n in sub_ns
                      subj_btwn = subj_btwn,
                      item_btwn = item_btwn,
                      both_win = both_win);
-
+    fake_kb07_df = DataFrame(fake_kb07)
 
     # Reduce the fully crossed design to the original experimental design:
     fake_kb07_df = sort(fake_kb07_df, [:subj, :item, :load, :prec, :spkr])
@@ -571,7 +572,8 @@ for subj_n in sub_ns
     A = cumsum(A)
     idx = idx+A
     fake_kb07_df= fake_kb07_df[idx, :]
-
+    rename!(fake_kb07_df, :dv => :rt_trunc)
+    
     # Fit the model:
     fake_kb07_m = fit(MixedModel, kb07_f, fake_kb07_df, contrasts=contrasts);
 
@@ -586,7 +588,7 @@ for subj_n in sub_ns
     ptbl = power_table(fake_kb07_sim)
     ptdf = DataFrame(ptbl)
     ptdf[!, :item_n] .= item_n
-    ptdf[!, :sub_n] .= sub_n
+    ptdf[!, :subj_n] .= subj_n
     append!(d, ptdf)
 
     end
@@ -601,6 +603,22 @@ CSV.write("power.csv", d)
 ```
 
 # TODO: NEED Help: it would be nice to make a plot of this!
+Here we show how to make a quick plot of the output
+```
+using StatsPlots
+
+@df d scatter(
+    :subj_n,
+    :power,
+    group = :item_n,
+    title = "Power of different designs",
+    xlabel = "# of Subjects",
+    ylabel = "power",
+    m = (0.5, [:cross :hex :star7], 12),
+    bg = RGB(0.2, 0.2, 0.2)
+)
+
+```
 
 # Credit
 This tutorial was conceived for ZIF research and tutorial workshop  by Lisa DeBruine presented again by Phillip Alday during the 2020 SMLP Summer School.
