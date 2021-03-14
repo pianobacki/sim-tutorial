@@ -29,14 +29,15 @@ using LinearAlgebra      # not used yet, for specifing θ
 Here we define how many model simulations we want to do. A large number will give more reliable results, but will take longer to compute. It is useful to set it to a low number for testing, and increase it for your final analysis.
 
 ```@example Main
-nsims = 1000 
+nsims = 1000
 ```
-<br/><br/>
 
 # 1. Simulate from existing data
-@DANIEL: in welcher situation ist das zB nüzlich
-TODO: If the data (of a previous study is available, you can use it to generate??....) In the first step we specify our model.
-@DANIEL:: briefly describe the dataset
+For the first example we are going to simulate bootstrapped data from an existing data set. The data we will be using through out this tutorial is a study about @DANIEL!!!???
+The dependent variable is reaction time. The independent variables are speaker, precision and load.
+TODO: briefly describe the dataset
+
+We have to load the data and define some characteristics like the contrasts and the underlying model.
 
 Load existing data:
 ```@example Main
@@ -45,12 +46,12 @@ kb07 = MixedModels.dataset("kb07");
 
 Set contrasts:
 ```@example Main
-contrasts = Dict(:spkr => HelmertCoding(), 
-                 :prec => HelmertCoding(), 
+contrasts = Dict(:spkr => HelmertCoding(),
+                 :prec => HelmertCoding(),
                  :load => HelmertCoding());
 ```
 
-Define model formula:
+The chosen LMM for this dataset is defined by the following model formula:
 ```@example Main
 kb07_f = @formula( rt_trunc ~ 1 + spkr+prec+load + (1|subj) + (1+prec|item) );
 ```
@@ -63,7 +64,7 @@ print(kb07_m)
 
 ## **1.1 Simulate from existing data with same parameters**
 
-TODO: First we look at the power of the dataset with the same parameters as in the original data...
+We will first look at the power of the dataset with the same parameters as in the original data set. This means that each dataset will have the exact nummber of observations as the original data. Here, we use the model `kb07_m` we fitted above to our dataset `kb07`.
 
 You can use the `parameparametricbootstrap()` function to run `nsims` iterations of data sampled using the parameters from `kb07_m`.
 Set up a random seed to make the simulation reproducible. You can use your favourite number.
@@ -82,8 +83,18 @@ Run nsims iterations:
 ```@example Main
 kb07_sim = parametricbootstrap(rng, nsims, kb07_m, use_threads = false);
 ```
-
 **Try**: Run the code above with or without `use_threads = true`.
+
+The output DataFrame `kb07_sim` contains the results of the bootstrapping procedure. 
+
+```@example Main
+df = DataFrame(kb07_sim.allpars);
+first(df, 9)
+nrows(df)
+```
+
+The dataframe df has 9000 rows: 9 parameters, in 1000 iterations.
+
 
 Convert p-values to dataframe and save it as CSV
 ```@example Main
@@ -106,6 +117,8 @@ You can set the `alpha` argument to change the default value of 0.05 (justify yo
 ```@example Main
 ptbl = power_table(kb07_sim)
 ```
+TODO: explain how to interpret this? @DANIEL
+
 
 You can also do it manually:
 ```@example Main
@@ -123,7 +136,7 @@ pretty_table(ptbl)
 ## **1.2 Simulate data with changed parameters without touching the existing data**
 
 Let's say we want to check our power to detect effects of spkr, prec, and load
-that are half the size of our pilot data. We can set a new vector of beta values
+that are only half the size as in our pilot data. We can set a new vector of beta values
 with the `β` argument to `parametricbootstrap()`.
 
 
@@ -149,14 +162,13 @@ kb07_sim_half = parametricbootstrap(rng, nsims, kb07_m, β = new_beta, use_threa
 power_table(kb07_sim_half)
 ```
 
-<br/><br/>
-
-
 # 2. Simulate data from scratch
+In some situations, instead of using an existing dataset it may be useful to simulate the data from scratch. This could be the case when the original data is not available but the effect sizes are known. That means that we have to:
 
-TODO: in some situations it may be useful to simulate the data from scratch. That means that we specify the effect sizes manually... This is useful when (you have the information but didnt fit the data yourself??)
+a) specify the effect sizes manually
+b) manually create an experimental design, according to which data can be simulated
 
-If we simulate data from scratch, next to subject and item number, we can manipulate the arguments `β`, `σ` and `θ`.
+If we simulate data from scratch, aside from subject and item number, we can manipulate the arguments `β`, `σ` and `θ`.
 Lets have a closer look at them, define their meaning and we will see where the corresponding values in the model output are.
 
 ### **Beta**
@@ -188,7 +200,7 @@ Thus our first `θ` is the relationship: variance component devided by residual 
 kb07_m.θ
 ```
 
-We also can calculate the `θ` for variance component *`subj - (Intercept)`*. 
+We also can calculate the `θ` for variance component *`subj - (Intercept)`*.
 The residual standard deviation is `680.032`.
 The standard deviation of our variance component *`subj - (Intercept)`* is `298.026`.
 Thus, the related θ is the relationship: variance component devided by residual standard deviation
@@ -198,11 +210,11 @@ Thus, the related θ is the relationship: variance component devided by residual
 kb07_m.θ
 ```
 
-We can not calculate the `θ` for variance component *`item - prec: maintain`* yet, because it includes the correlation of 
-*`item - prec: maintain`* and *`item - (Intercept)`*. 
+We can not calculate the `θ` for variance component *`item - prec: maintain`* yet, because it includes the correlation of
+*`item - prec: maintain`* and *`item - (Intercept)`*.
 The `θ` vector is the flattened version of the variance-covariance matrix - a lowertrinangular matrix.
 The on-diagonal elements are just the standard deviations (the `σ`'s), If all off-diagonal elements are zero, we can use our
-calculation above. The off-diagonal elements are covariances and correspond to the correlations (the `ρ`'s). 
+calculation above. The off-diagonal elements are covariances and correspond to the correlations (the `ρ`'s).
 If they are unequal to zero, as it is in our `kb07`-dataset, we cannot recreate the variance-covariance matrix having the model output.
 We just take it from the model we already fitted
 
@@ -211,8 +223,8 @@ See the two inner values:
 kb07_m.θ
 ```
 
-TODO:
-# NEED HELP HERE, IS THEIR ANY WAY TO DEFINE VARIANCE-COVARIANCE MATRIX YET ?
+TODO: NEED HELP HERE, IS THEIR ANY WAY TO DEFINE VARIANCE-COVARIANCE MATRIX YET ?
+=========
 <!---
 vc = VarCorr(kb07_m)
 vc.σρ
@@ -238,16 +250,15 @@ re_subj = create_re(0.4382528181348316)
 vcat( flatlowertri(re_item), flatlowertri(re_subj) )
 --->
 
+## 2.1 A simple example
 Having this knowledge about the parameters we can now **simulate data from scratch**
 
-The `simdat_crossed()` function from `MixedModelsSim` lets you set up a data frame with a specified experimental design. 
-For now, it only makes fully balanced crossed designs!, but you can generate an unbalanced design by simulating data for the largest cell and deleting extra rows. 
+The `simdat_crossed()` function from `MixedModelsSim` lets you set up a data frame with a specified experimental design.
+For now, it only makes fully balanced crossed designs!, but you can generate an unbalanced design by simulating data for the largest cell and deleting extra rows.
 
 Firstly we will set an easy design where `subj_n` subjects per `age` group (O or Y) respond to `item_n` items in each of two `condition`s (A or B).
 
 Your factors need to be specified separately for between-subject, between-item, and within-subject/item factors using `Dict` with the name of each factor as the keys and vectors with the names of the levels as values.
-
-## 2.1 A simple example
 
 First we have to define factors in a dict.
 
@@ -275,10 +286,10 @@ item_n = 30
 
 Simulate data:
 ```@example Main
-dat = simdat_crossed(subj_n, 
-                     item_n, 
-                     subj_btwn = subj_btwn, 
-                     item_btwn = item_btwn, 
+dat = simdat_crossed(subj_n,
+                     item_n,
+                     subj_btwn = subj_btwn,
+                     item_btwn = item_btwn,
                      both_win = both_win);
 ```
 
@@ -305,9 +316,8 @@ m1 = fit(MixedModel, f1, dat, contrasts=contrasts)
 print(m1)
 ```
 
-Because the `dv` is just random noise from N(0,1), there will be basically no subject or item random variance, 
-residual variance will be near 1.0, and the estimates for all effects should be small. 
-Don't worry, we'll specify fixed and random effects directly in `parametricbootstrap()`. 
+Because the `dv` is just random noise from N(0,1), there will be basically no subject or item random variance, residual variance will be near 1.0, and the estimates for all effects should be small.
+Don't worry, we'll specify fixed and random effects directly in `parametricbootstrap()`.
 
 
 Set random seed for reproducibility:
@@ -324,9 +334,9 @@ new_theta = [1.0, 1.0]
 
 Run nsims iterations:
 ```@example Main
-sim1 = parametricbootstrap(rng, nsims, m1, 
-                        β = new_beta, 
-                        σ = new_sigma, 
+sim1 = parametricbootstrap(rng, nsims, m1,
+                        β = new_beta,
+                        σ = new_sigma,
                         θ = new_theta,
                         use_threads = false);
 ```
@@ -342,11 +352,8 @@ For nicely displaying it, you can use pretty_table:
 pretty_table(ptbl)
 ```
 
-<br/><br/>
-
 # 2.2 Recreate the `kb07`-dataset from scratch
-
-To also play with the number of subjects and items in our power calculation, we need to recreate the design of an given experiment. Lets start with a simulated replication of the `kb07`-dataset.
+For full control over all parameters in our `kb07` data set we will recreate the design using the method shown above.
 
 
 Define subject and item number:
@@ -382,20 +389,26 @@ Have a look:
 first(fake_kb07_df,8)
 ```
 
-The function `simdat_crossed` generates a fully crossed design. 
+The function `simdat_crossed` generates a fully crossed design.
 Unfortunately, our original design is not fully crossed. Every subject saw an image only once, thus in one of eight possible conditions. To simulate that we only keep one of every eight lines.
-# TODO: NEED HELP, is that correct? or is it possible to do it in simdat_crossed?
+
+TODO: NEED HELP, is that correct? or is it possible to do it in simdat_crossed?
+========
 
 We sort the dataframe to enable easier selection
 ```
 fake_kb07_df = sort(fake_kb07_df, [:subj, :item, :load, :prec, :spkr])
 ```
 
-Define an index which represets a random choise of one of every eight rows:
+In order to select only the relevant rows of the data set we define an index which represets a random choice of one of every eight rows. First we generate a vector `idx` which represents which row to keep in each set of 8.
 ```@example Main
-Z= convert(Int64,(length(fake_kb07)/8))
-idx = rand(rng, 1:8 , Z)
-A = repeat([8], inner=Z-1)
+len = convert(Int64,(length(fake_kb07)/8))
+idx = rand(rng, 1:8 , len)
+```
+
+Then we create an array `A`, of the same length that is populated multiples of the number 8. Added together `A` and `idx` give the indexes of one row from each set of 8s.
+```@example Main
+A = repeat([8], inner=len-1)
 A = append!( [0], A )
 A = cumsum(A)
 idx = idx+A
@@ -407,7 +420,6 @@ fake_kb07_df= fake_kb07_df[idx, :]
 ```
 
 Write a CSV:
-
 ```@example Main
 CSV.write("fake_kb07_df.csv", fake_kb07_df);
 ```
@@ -417,10 +429,10 @@ Now we can use the simulated data in the same way as above.
 
 Set contrasts:
 ```@example Main
-contrasts = Dict(:spkr => HelmertCoding(), 
-                 :prec => HelmertCoding(), 
+contrasts = Dict(:spkr => HelmertCoding(),
+                 :prec => HelmertCoding(),
                  :load => HelmertCoding());
-``` 
+```
 
 Define formula, same as above:
 ```@example Main
@@ -438,7 +450,8 @@ Set random seed for reproducibility:
 rng = StableRNG(42);
 ```
 
-Specify `β`, `σ`, and `θ`, we changed the parameter to the values we already know from the model of the existing dataset:
+Then, again, we specify `β`, `σ`, and `θ`.
+Here we use the values that we found in the model of the existing dataset:
 
 ```@example Main
 new_beta = [2181.85, 67.879, -333.791, 78.5904]
@@ -457,9 +470,9 @@ new_theta = kb07_m.θ
 
 Run nsims iterations:
 ```@example Main
-fake_kb07_sim = parametricbootstrap(rng, nsims, fake_kb07_m, 
-                        β = new_beta, 
-                        σ = new_sigma, 
+fake_kb07_sim = parametricbootstrap(rng, nsims, fake_kb07_m,
+                        β = new_beta,
+                        σ = new_sigma,
                         θ = new_theta,
                         use_threads = false);
 ```
@@ -475,10 +488,8 @@ Compare to the powertable from the existing data:
 power_table(kb07_sim)
 ```
 
-We have successfully recreate the powersimulation of an existing dataset from scratch. This has the 
+We have successfully recreated the power simulation of an existing dataset from scratch. This has the
 advantage, that we now can iterate over different number of subjects and items.
-
-<br/> <br/>
 
 # Loop over sample sizes
 When designing a study, you may be interested in trying various numbers ob subjects and items to see how that affects the power of your study. To do this you can use a loop to run simulations over a range of values for any parameter.
@@ -496,8 +507,8 @@ both_win = Dict("spkr" => ["old", "new"],
 
 Set contrasts:
 ```@example Main
-contrasts = Dict(:spkr => HelmertCoding(), 
-                 :prec => HelmertCoding(), 
+contrasts = Dict(:spkr => HelmertCoding(),
+                 :prec => HelmertCoding(),
                  :load => HelmertCoding());
 ``` 
 
@@ -511,8 +522,7 @@ Define formula, same as above:
 kb07_f = @formula( rt_trunc ~ 1 + spkr+prec+load + (1|subj) + (1+prec|item) );
 ```
 
-Specify `β`, `σ`, and `θ`, we changed the parameter to the values we already know from the model of the existing dataset:
-
+Specify `β`, `σ`, and `θ`:
 ```@example Main
 new_beta = [2181.85, 67.879, -333.791, 78.5904]
 new_beta = kb07_m.β
@@ -533,7 +543,7 @@ Define subject and item numbers as arrays:
 ```@example Main
 sub_ns = [20, 30, 40];
 item_ns = [10, 20, 30];
-``` 
+```
 
 Make an emty dataframe:
 ```@example Main
@@ -554,14 +564,12 @@ for subj_n in sub_ns
 
     # Reduce the fully crossed design to the original experimental design:
     fake_kb07_df = sort(fake_kb07_df, [:subj, :item, :load, :prec, :spkr])
-
-    Z= convert(Int64,(length(fake_kb07)/8))
-    idx = rand(rng, 1:8 , Z)
-    A = repeat([8], inner=Z-1)
+    len = convert(Int64,(length(fake_kb07)/8))
+    idx = rand(rng, 1:8 , len)
+    A = repeat([8], inner=len-1)
     A = append!( [0], A )
     A = cumsum(A)
     idx = idx+A
-
     fake_kb07_df= fake_kb07_df[idx, :]
 
     # Fit the model:
