@@ -3,12 +3,14 @@ Power Analysis and Simulation Tutorial
 
 This tutorial demonstrates how to conduct power analyses and data simulation using Julia and the MixedModelsSim package.
 
-Power analysis is an important tool for experimental design. Here we show how to
-1. Create a bootstrapped dataset from existing data with a given model
-2. Adapt parameters in the analysis without changing the existing data set
-3. Create a bootstrapped dataset given only a model (data from scratch)
-4. Adapt parameters and analyze sample size
-@DANIEL: willst du noch was zur einleitung sagen?
+Power analysis is an important tool for planning an experimental design. Here we show how to
+1. Take existing data and calculate power by simulate new data with bootstrapping.
+2. Adapt parameters in a given Linear Mixed Model to analyze power without changing the existing data set. 
+3. Create a (simple) fully crossed dataset from scratch and analyze power.
+4. Recreate a more complex dataset from scratch and analyze power for specific model parameter but various sample sizes.
+
+
+
 
 ### Load the packages we'll be using in Julia
 First, here are the packages needed in this example.
@@ -22,7 +24,11 @@ using StableRNGs         # random number generator
 using CSV                # write CSV files
 using Markdown
 using Statistics         # basic math funcions
+using DataFramesMeta     # dplyr-like operations
+using Gadfly             # plotting package
+
 using LinearAlgebra      # not used yet, for specifing θ
+
 ```
 
 ### Define number of iterations
@@ -32,10 +38,19 @@ Here we define how many model simulations we want to do. A large number will giv
 nsims = 1000
 ```
 
-# 1. Simulate from existing data
-For the first example we are going to simulate bootstrapped data from an existing data set. The data we will be using through out this tutorial is a study about @DANIEL!!!???
-The dependent variable is reaction time. The independent variables are speaker, precision and load.
-TODO: briefly describe the dataset
+# 1. Take existing data and calculate power by simulate new data with bootstrapping.
+## **1.1. Build a Linear Mixed Model from existing data.**
+
+For the first example we are going to simulate bootstrapped data from an existing data set. 
+The Experiment 2 from Kronmüller, E., & Barr, D. J. (2007). Perspective-free pragmatics: Broken precedents and the recovery-from-preemption hypothesis. Journal of Memory and Language, 56(3), 436-455.
+
+The data we will be using through out this tutorial is a study about how in a conversation the change of a speaker 
+or the change of precedents (which are patterns of word usage to discribe an object, e.g. one can reffer to the same object 
+"white shoes", "runners", "sneakers") affects the understanding. 
+
+Objects are presented on a screen while participants listen to instructions to move the objects around. Participants eye movements were tracked.
+The dependent variable is response time, defined as the latency between the onset of the test description and the moment at which the target was selected.
+The independent variables are speaker (old vs. new), precedents (maintain vs. break)  and cognitive load (a secondary memory task).
 
 We have to load the data and define some characteristics like the contrasts and the underlying model.
 
@@ -62,7 +77,7 @@ kb07_m = fit(MixedModel, kb07_f, kb07, contrasts=contrasts);
 print(kb07_m)
 ```
 
-## **1.1 Simulate from existing data with same parameters**
+## **1.2 Simulate from existing data with same model parameters**
 
 We will first look at the power of the dataset with the same parameters as in the original data set. This means that each dataset will have the exact nummber of observations as the original data. Here, we use the model `kb07_m` we fitted above to our dataset `kb07`.
 
@@ -90,11 +105,31 @@ The output DataFrame `kb07_sim` contains the results of the bootstrapping proced
 ```@example Main
 df = DataFrame(kb07_sim.allpars);
 first(df, 9)
-nrows(df)
+nrow(df)
 ```
 
 The dataframe df has 9000 rows: 9 parameters, in 1000 iterations.
 
+TODO: NEED HELP: is there a facet_wrap function in Gadfly? 
+========
+
+Plot some bootstrapped parameter:
+```@example Main
+σres = @where(df, :type .== "σ", :group .== "residual").value
+plot(x = σres, Geom.density, Guide.xlabel("Parametric bootstrap estimates of σ"), Guide.ylabel("Density"))
+
+βInt = @where(df, :type .== "β", :names .== "(Intercept)").value
+plot(x = βInt, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β (Intercept)"), Guide.ylabel("Density"))
+
+βSpeaker = @where(df, :type .== "β", :names .== "spkr: old").value
+plot(x = βSpeaker, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β Speaker"), Guide.ylabel("Density"))
+
+βPrecedents = @where(df, :type .== "β", :names .== "prec: maintain").value
+plot(x = βPrecedents, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β Precedents"), Guide.ylabel("Density"))
+
+βLoad = @where(df, :type .== "β", :names .== "load: yes").value
+plot(x = βLoad, Geom.density, Guide.xlabel("Parametric bootstrap estimates of β Load"), Guide.ylabel("Density"))
+```
 
 Convert p-values to dataframe and save it as CSV
 ```@example Main
@@ -107,7 +142,7 @@ Have a look at your simluated data:
 print(first(kb07_sim_df, 8))
 ```
 
-Now that we have a bootstrapped dataset, we can start our power calculation.
+Now that we have a bootstrapped data, we can start our power calculation.
 
 ### Power calculation
 
@@ -117,8 +152,12 @@ You can set the `alpha` argument to change the default value of 0.05 (justify yo
 ```@example Main
 ptbl = power_table(kb07_sim)
 ```
-TODO: explain how to interpret this? @DANIEL
 
+TODO:  NEED HELP, alpha doesnt work anymore?
+=========
+
+A powervalue of 1 maens that in every iteration the spefific parameter we are looking at was below our alpha.
+A powervalue of 0.5 means that in half of our iterations the spefific parameter we are looking at was below our alpha.
 
 You can also do it manually:
 ```@example Main
@@ -132,8 +171,7 @@ For nicely displaying, you can use `pretty_table`:
 pretty_table(ptbl)
 ```
 
-
-## **1.2 Simulate data with changed parameters without touching the existing data**
+# 2. Adapt parameters in a given Linear Mixed Model to analyze power without changing the existing data set.**
 
 Let's say we want to check our power to detect effects of spkr, prec, and load
 that are only half the size as in our pilot data. We can set a new vector of beta values
@@ -162,7 +200,8 @@ kb07_sim_half = parametricbootstrap(rng, nsims, kb07_m, β = new_beta, use_threa
 power_table(kb07_sim_half)
 ```
 
-# 2. Simulate data from scratch
+# 3. Create a (simple) fully crossed dataset from scratch and analyze power.
+
 In some situations, instead of using an existing dataset it may be useful to simulate the data from scratch. This could be the case when the original data is not available but the effect sizes are known. That means that we have to:
 
 a) specify the effect sizes manually
@@ -188,7 +227,7 @@ kb07_m.σ
 ```
 
 ### **Theta**
-The meaning of `θ` is a bit less intuitive. In a less complex model (one that only  has intercepts for the random effects) or if we supress the correlations in the formula with `zerocorr()` then `θ` describes the relationship between 
+The meaning of `θ` is a bit less intuitive. In a less complex model (one that only has intercepts for the random effects) or if we supress the correlations in the formula with `zerocorr()` then `θ` describes the relationship between 
 the random effects standard deviation and the standard deviation of the residual term.
 In our `kb07_m` example:
 The residual standard deviation is `680.032`.
@@ -250,11 +289,15 @@ re_subj = create_re(0.4382528181348316)
 vcat( flatlowertri(re_item), flatlowertri(re_subj) )
 --->
 
-## 2.1 A simple example
+## *A simple example*
+
 Having this knowledge about the parameters we can now **simulate data from scratch**
 
 The `simdat_crossed()` function from `MixedModelsSim` lets you set up a data frame with a specified experimental design.
 For now, it only makes fully balanced crossed designs!, but you can generate an unbalanced design by simulating data for the largest cell and deleting extra rows.
+
+TODO: NEED HELP: is that stiull right? I think it is possible now to make partially crossed designs?  
+===========
 
 Firstly we will set an easy design where `subj_n` subjects per `age` group (O or Y) respond to `item_n` items in each of two `condition`s (A or B).
 
@@ -352,7 +395,9 @@ For nicely displaying it, you can use pretty_table:
 pretty_table(ptbl)
 ```
 
-# 2.2 Recreate the `kb07`-dataset from scratch
+# 4. Recreate a more complex dataset from scratch and analyze power for specific model parameter but various sample sizes.
+
+# *4.1 Recreate the `kb07`-dataset from scratch*
 For full control over all parameters in our `kb07` data set we will recreate the design using the method shown above.
 
 
@@ -368,7 +413,7 @@ subj_btwn = nothing
 item_btwn = nothing
 both_win = Dict("spkr" => ["old", "new"],
                 "prec" => ["maintain", "break"],
-                "load" => ["yes", "no"])
+                "load" => ["yes", "no"]);
 ```
 
 Simulate data:
@@ -490,12 +535,14 @@ power_table(kb07_sim)
 ```
 
 We have successfully recreated the power simulation of an existing dataset from scratch. This has the
-advantage, that we now can iterate over different number of subjects and items.
+advantage, that we now can iterate over different numbers of subjects and items.
 
-# Loop over sample sizes
-When designing a study, you may be interested in trying various numbers ob subjects and items to see how that affects the power of your study. To do this you can use a loop to run simulations over a range of values for any parameter.
+# *4.2 Loop over subject and item sizes*
 
-### We first define every fixed things outside the loop.
+When designing a study, you may be interested in trying various numbers of subjects and items to see how that affects the power of your study. 
+To do this you can use a loop to run simulations over a range of values for any parameter.
+
+### We first define every fixed things outside the loop (same as above):
 
 Define factors in a dict:
 ```@example Main
@@ -518,7 +565,7 @@ Set random seed for reproducibility:
 rng = StableRNG(42);
 ```
 
-Define formula, same as above:
+Define formula:
 ```@example Main
 kb07_f = @formula( rt_trunc ~ 1 + spkr+prec+load + (1|subj) + (1+prec|item) );
 ```
@@ -540,6 +587,7 @@ new_theta = kb07_m.θ
 
 
 ### Then we define the variables that out loop will iterate over
+
 Define subject and item numbers as arrays:
 ```@example Main
 sub_ns = [20, 30, 40];
@@ -602,7 +650,9 @@ Save the powertable as CSV
 CSV.write("power.csv", d)
 ```
 
-# TODO: NEED Help: it would be nice to make a plot of this!
+TODO: NEED Help: it would be nice to make a plot of this!
+=========
+
 Here we show how to make a quick plot of the output
 ```
 using StatsPlots
@@ -621,81 +671,6 @@ using StatsPlots
 ```
 
 # Credit
-This tutorial was conceived for ZIF research and tutorial workshop  by Lisa DeBruine presented again by Phillip Alday during the 2020 SMLP Summer School.
+This tutorial was conceived for ZiF research and tutorial workshop by Lisa DeBruine (Feb. 2020) presented again by Phillip Alday during the SMLP Summer School (Sep. 2020).
 
-Updated by Lisa Schwetlick & Daniel Backhaus after changes to the package.
-
-
-
-
-not used: 
-<!---
-```@example Main
-R"""
-require(tidyverse, quietly = TRUE)   # for data wrangling and visualisation
-""";
-```
-
-# 
-# It's useful to be able to weave your file quickly while you're debugging, 
-# so set the number of simulations to a relatively low number while you're 
-# setting up your script and change it to a larger number when everything
-# is debugged.
-
-# toDo color and facet didnt work
-```{julia;label=pleasecorrect}
-R"""
-d <- $kb07_sim_df
-
-ggplot(d, aes(x=!!as.name("\u03b2"),  color= coefname))+
-  geom_density(show.legend = FALSE)+
-  facet_wrap(~coefname, scales = "free")
-
-"""
-
-# or as function 
-# #### Define: ggplot_betas
-# 
-# This function plots the beta values returned from `parametricbootstrap` using ggplot in R.
-# If you set a figname, it will save the plot to the specified file.
-
-
-function ggplot_betas(sim, figname = 0, width = 7, height = 5) 
-
-    df = DataFrame(sim.coefpvalues)
-
-    R"""
-    
-    p <- $df %>%
-     rename(beta = !!as.name("\u03b2"))
-     ggplot(aes(x=!!as.name("\u03b2"),  color=coefname ))+
-      geom_density(show.legend = FALSE)+
-      facet_wrap(~coefname, scales = "free")
-
-        if (is.character($figname)) {
-            ggsave($figname, p, width = $width, height = $height)
-        }
-
-        p
-    """
-end
-
-
-
-# Plot betas in ggplot. In the code editor or Jupyter notebooks, you can omit the file name to just display the figure in an external window.
-
-
-
-# just display the image
-# ggplot_betas(kb07_sim) 
-# save the image to a file and display (display doesn't work in weave)
-ggplot_betas(kb07_sim, "kb07_betas.png")
-
-
-
-# In documents you want to weave, save the image to a file and use markdown to display the file. Add a semicolon to the end of the function to suppress creating the images in new windows during weaving.
-
-# ![](fig/kb07_betas.png)
-```
-
---->
+Updated and extended by Lisa Schwetlick & Daniel Backhaus after changes to the package.
