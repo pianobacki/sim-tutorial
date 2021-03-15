@@ -171,7 +171,7 @@ For nicely displaying, you can use `pretty_table`:
 pretty_table(ptbl)
 ```
 
-# 2. Adapt parameters in a given Linear Mixed Model to analyze power without changing the existing data set.**
+# 2. Adapt parameters in a given Linear Mixed Model to analyze power without changing the existing data set.
 
 Let's say we want to check our power to detect effects of spkr, prec, and load
 that are only half the size as in our pilot data. We can set a new vector of beta values
@@ -673,4 +673,4 @@ using StatsPlots
 # Credit
 This tutorial was conceived for ZiF research and tutorial workshop by Lisa DeBruine (Feb. 2020) presented again by Phillip Alday during the SMLP Summer School (Sep. 2020).
 
-Updated and extended by Lisa Schwetlick & Daniel Backhaus after changes to the package.
+Updated and extended by Lisa Schwetlick & Daniel Backhaus, with the kind help of Phillip Alday,  after changes to the package.
