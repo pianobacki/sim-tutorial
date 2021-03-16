@@ -110,8 +110,6 @@ nrow(df)
 
 The dataframe df has 9000 rows: 9 parameters, in 1000 iterations.
 
-TODO: NEED HELP: is there a facet_wrap function in Gadfly? 
-========
 
 Plot some bootstrapped parameter:
 ```@example Main
@@ -150,11 +148,8 @@ The function `power_table()` from `MixedModelsSim` takes the output of `parametr
 You can set the `alpha` argument to change the default value of 0.05 (justify your alpha ;).
 
 ```@example Main
-ptbl = power_table(kb07_sim)
+ptbl = power_table(kb07_sim, 0.05)
 ```
-
-TODO:  NEED HELP, alpha doesnt work anymore?
-=========
 
 A powervalue of 1 maens that in every iteration the spefific parameter we are looking at was below our alpha.
 A powervalue of 0.5 means that in half of our iterations the spefific parameter we are looking at was below our alpha.
@@ -261,6 +256,23 @@ See the two inner values:
 ```@example Main
 kb07_m.θ
 ```
+# Play with theta
+
+kb07_m2 = kb07_m
+
+update!(kb07_m2, re_item, re_subj)
+
+
+### make a lower triangular matricis
+re_item = create_re(0.5363168233715857,0.37133693708531357)
+re_item[2]=-0.70
+re_item
+
+re_subj = create_re(0.4382528181348316)
+
+### make the compact form out of it = is equal to θ 
+newθ= vcat( flatlowertri(re_item), flatlowertri(re_subj) )
+
 
 TODO: NEED HELP HERE, IS THEIR ANY WAY TO DEFINE VARIANCE-COVARIANCE MATRIX YET ?
 =========
@@ -296,7 +308,7 @@ Having this knowledge about the parameters we can now **simulate data from scrat
 The `simdat_crossed()` function from `MixedModelsSim` lets you set up a data frame with a specified experimental design.
 For now, it only makes fully balanced crossed designs!, but you can generate an unbalanced design by simulating data for the largest cell and deleting extra rows.
 
-TODO: NEED HELP: is that stiull right? I think it is possible now to make partially crossed designs?  
+TODO: NEED HELP: is that still right? I think it is possible now to make partially crossed designs?  
 ===========
 
 Firstly we will set an easy design where `subj_n` subjects per `age` group (O or Y) respond to `item_n` items in each of two `condition`s (A or B).
