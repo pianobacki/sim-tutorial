@@ -41,14 +41,13 @@ nsims = 1000
 # 1. Take existing data and calculate power by simulate new data with bootstrapping.
 ## **1.1. Build a Linear Mixed Model from existing data.**
 
-For the first example we are going to simulate bootstrapped data from an existing data set. 
-The Experiment 2 from Kronmüller, E., & Barr, D. J. (2007). Perspective-free pragmatics: Broken precedents and the recovery-from-preemption hypothesis. Journal of Memory and Language, 56(3), 436-455.
+For the first example we are going to simulate bootstrapped data from an existing data set:
 
-The data we will be using through out this tutorial is a study about how in a conversation the change of a speaker 
-or the change of precedents (which are patterns of word usage to discribe an object, e.g. one can reffer to the same object 
-"white shoes", "runners", "sneakers") affects the understanding. 
+*Experiment 2 from Kronmüller, E., & Barr, D. J. (2007). Perspective-free pragmatics: Broken precedents and the recovery-from-preemption hypothesis. Journal of Memory and Language, 56(3), 436-455.*
 
-Objects are presented on a screen while participants listen to instructions to move the objects around. Participants eye movements were tracked.
+The data we will be using through out this tutorial is a study about how in a conversation the change of a speaker or the change of precedents (which are patterns of word usage to discribe an object, e.g. one can refer to the same object "white shoes", "runners", "sneakers") affects the understanding.
+
+Objects are presented on a screen while participants listen to instructions to move the objects around. Participants eye movements are tracked.
 The dependent variable is response time, defined as the latency between the onset of the test description and the moment at which the target was selected.
 The independent variables are speaker (old vs. new), precedents (maintain vs. break)  and cognitive load (a secondary memory task).
 
@@ -79,7 +78,7 @@ print(kb07_m)
 
 ## **1.2 Simulate from existing data with same model parameters**
 
-We will first look at the power of the dataset with the same parameters as in the original data set. This means that each dataset will have the exact nummber of observations as the original data. Here, we use the model `kb07_m` we fitted above to our dataset `kb07`.
+We will first look at the power of the dataset with the same parameters as in the original data set. This means that each dataset will have the exact number of observations as the original data. Here, we use the model `kb07_m` we fitted above to our dataset `kb07`.
 
 You can use the `parameparametricbootstrap()` function to run `nsims` iterations of data sampled using the parameters from `kb07_m`.
 Set up a random seed to make the simulation reproducible. You can use your favourite number.
@@ -109,9 +108,6 @@ nrow(df)
 ```
 
 The dataframe df has 9000 rows: 9 parameters, in 1000 iterations.
-
-TODO: NEED HELP: is there a facet_wrap function in Gadfly? 
-========
 
 Plot some bootstrapped parameter:
 ```@example Main
@@ -150,11 +146,8 @@ The function `power_table()` from `MixedModelsSim` takes the output of `parametr
 You can set the `alpha` argument to change the default value of 0.05 (justify your alpha ;).
 
 ```@example Main
-ptbl = power_table(kb07_sim)
+ptbl = power_table(kb07_sim, 0.05)
 ```
-
-TODO:  NEED HELP, alpha doesnt work anymore?
-=========
 
 A powervalue of 1 maens that in every iteration the spefific parameter we are looking at was below our alpha.
 A powervalue of 0.5 means that in half of our iterations the spefific parameter we are looking at was below our alpha.
@@ -212,23 +205,22 @@ Lets have a closer look at them, define their meaning and we will see where the 
 
 ### **Beta**
 `β` are our effect sizes. If we look again on our LMM summary from the `kb07`-dataset `kb07_m`
-we see our four `β` under fixed-effects parameters in the `Coef.`-column. 
+we see our four `β` under fixed-effects parameters in the `Coef.`-column.
 
 ```@example Main
-kb07_m 
+kb07_m
 kb07_m.β
 ```
 
 ### **Sigma**
-`σ` is the residual-standard deviation listed under the variance components. 
+`σ` is the residual-standard deviation listed under the variance components.
 ```@example Main
-kb07_m 
+kb07_m
 kb07_m.σ
 ```
 
 ### **Theta**
-The meaning of `θ` is a bit less intuitive. In a less complex model (one that only has intercepts for the random effects) or if we supress the correlations in the formula with `zerocorr()` then `θ` describes the relationship between 
-the random effects standard deviation and the standard deviation of the residual term.
+The meaning of `θ` is a bit less intuitive. In a less complex model (one that only has intercepts for the random effects) or if we supress the correlations in the formula with `zerocorr()` then `θ` describes the relationship between the random effects standard deviation and the standard deviation of the residual term.
 In our `kb07_m` example:
 The residual standard deviation is `680.032`.
 The standard deviation of our first variance component *`item - (Intercept)`* is `364.713`.
@@ -262,32 +254,26 @@ See the two inner values:
 kb07_m.θ
 ```
 
-TODO: NEED HELP HERE, IS THEIR ANY WAY TO DEFINE VARIANCE-COVARIANCE MATRIX YET ?
-=========
-<!---
-vc = VarCorr(kb07_m)
-vc.σρ
-kb07_m.λ
-kb07_m.λ[1]
-kb07_m.λ[2]
+Play with theta
+```@example Main
+kb07_m2 = kb07_m
+update!(kb07_m2, re_item, re_subj)
+```
 
-
-λitem = LowerTriangular(diagm([1.3, 0.35, 0.75]))
-λsubj = LowerTriangular(diagm([1.5, 0.5, 0.75]))
-
-isapprox(kb07_m.θ,  [flatlowertri(kb07_m.λ[1]); flatlowertri(kb07_m.λ[2])])
-
-[flatlowertri(λitem); flatlowertri(λsubj)]
-
-
-# make a lower triangular matricis
-re_item = create_re(0.5363168233715857,0)
-re_item[4]=0.37133693708531357
+make a lower triangular matrix
+```@example Main
+re_item = create_re(0.5363168233715857,0.37133693708531357)
+re_item[2]=-0.70
+re_item
 
 re_subj = create_re(0.4382528181348316)
-# make the compact form out of it = is equal to θ 
-vcat( flatlowertri(re_item), flatlowertri(re_subj) )
---->
+```
+
+make the compact form out of it = is equal to θ
+```@example Main
+newθ= vcat( flatlowertri(re_item), flatlowertri(re_subj) )
+```
+
 
 ## *A simple example*
 
@@ -296,7 +282,7 @@ Having this knowledge about the parameters we can now **simulate data from scrat
 The `simdat_crossed()` function from `MixedModelsSim` lets you set up a data frame with a specified experimental design.
 For now, it only makes fully balanced crossed designs!, but you can generate an unbalanced design by simulating data for the largest cell and deleting extra rows.
 
-TODO: NEED HELP: is that stiull right? I think it is possible now to make partially crossed designs?  
+TODO: NEED HELP: is that still right? I think it is possible now to make partially crossed designs? 
 ===========
 
 Firstly we will set an easy design where `subj_n` subjects per `age` group (O or Y) respond to `item_n` items in each of two `condition`s (A or B).
@@ -344,7 +330,7 @@ The values we see in the column `dv` is just random noise.
 
 Set contrasts:
 ```@example Main
-contrasts = Dict(:age => HelmertCoding(), 
+contrasts = Dict(:age => HelmertCoding(),
                  :condition => HelmertCoding());
 ```
 
@@ -534,12 +520,11 @@ Compare to the powertable from the existing data:
 power_table(kb07_sim)
 ```
 
-We have successfully recreated the power simulation of an existing dataset from scratch. This has the
-advantage, that we now can iterate over different numbers of subjects and items.
+We have successfully recreated the power simulation of an existing dataset from scratch. This has the advantage, that we now can iterate over different numbers of subjects and items.
 
 # *4.2 Loop over subject and item sizes*
 
-When designing a study, you may be interested in trying various numbers of subjects and items to see how that affects the power of your study. 
+When designing a study, you may be interested in trying various numbers of subjects and items to see how that affects the power of your study.
 To do this you can use a loop to run simulations over a range of values for any parameter.
 
 ### We first define every fixed things outside the loop (same as above):
@@ -558,7 +543,7 @@ Set contrasts:
 contrasts = Dict(:spkr => HelmertCoding(),
                  :prec => HelmertCoding(),
                  :load => HelmertCoding());
-``` 
+```
 
 Set random seed for reproducibility:
 ```@example Main
@@ -621,7 +606,7 @@ for subj_n in sub_ns
     idx = idx+A
     fake_kb07_df= fake_kb07_df[idx, :]
     rename!(fake_kb07_df, :dv => :rt_trunc)
-    
+
     # Fit the model:
     fake_kb07_m = fit(MixedModel, kb07_f, fake_kb07_df, contrasts=contrasts);
 
